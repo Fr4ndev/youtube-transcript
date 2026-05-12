@@ -38,7 +38,7 @@ python scripts/extract_transcript.py --check-env
 ## Prerequisites
 
 ```bash
-# Core
+# Core (all four required — torchaudio enables VAD)
 pip install faster-whisper yt-dlp torch torchaudio
 
 # Optional: source separation
@@ -49,7 +49,28 @@ sudo apt install ffmpeg  # Linux
 brew install ffmpeg       # macOS
 ```
 
+**Smart setup — reuse existing venv with CUDA PyTorch:** If reinstalling PyTorch OOMs or takes too long, scan the user's projects for an existing venv with CUDA PyTorch (`find ~/Documentos ~/Escritorio -path '*/venv/bin/python' -exec {} -c "import torch; print(torch.cuda.is_available())" \;`). Install only missing deps (`faster-whisper yt-dlp torchaudio`) into that venv. Avoids re-downloading 2GB+ CUDA PyTorch wheels.
+
 ## Commands Reference
+
+### Model Selection (VRAM constraints matter)
+| Model | Params | VRAM | Speed | Best For |
+|-------|--------|------|-------|----------|
+| tiny | 39M | 1 GB | 10x | Quick drafts, CPU fallback |
+| base | 74M | 1 GB | 7x | Casual use |
+| small | 244M | 2 GB | 4x | Good quality, low-VRAM GPUs (GTX 1650) |
+| medium | 769M | 5 GB | 2x | **Best balance (default)** |
+| turbo | 809M | 6 GB | 8x | Speed-optimized |
+| large-v3 | 1.5B | 10 GB | 1x | Maximum accuracy |
+
+### VAD + Demucs Decision Matrix
+| Content Type | VAD | Demucs | Flag |
+|-------------|-----|--------|------|
+| Podcast / Lecture | ON | OFF | (default) |
+| Music video (vocals+instrumental) | OFF | ON | `--no-vad --demucs` |
+| Electronic music / EDM | OFF | ON | `--no-vad --demucs` |
+| Pure instrumental (no voice) | OFF | OFF | Skip — no transcript possible |
+| Mixed content | ON | ON | Slowest, best quality |
 
 ### extract_transcript.py — Main Pipeline
 
@@ -92,6 +113,9 @@ python scripts/action.py diagnose ID     # Diagnose specific video
 | OOM error | GPU VRAM exceeded | Use `--model small` or `turbo` |
 | Empty transcript | No speech content | Check speech_ratio in JSON output |
 | ffmpeg not found | System dependency | `sudo apt install ffmpeg` |
+| torchaudio not found (VAD fails) | Missing dep after partial venv setup | `pip install torchaudio` — VAD import is lazy, `--check-env` catches it but batch mode may surface it mid-run |
+| Background process shows no output | Python stdout buffering + non-TTY pipe | Use `PYTHONUNBUFFERED=1` and `python -u`, or monitor via `nvidia-smi` + `ps aux`; use `--json-only` to stdout for real-time feedback in foreground |
+| pip install OOM (PyTorch CUDA) | 2GB+ wheel download exhausts RAM | Reuse existing CUDA PyTorch venv from user's projects instead of reinstalling |
 
 ## Output Files
 

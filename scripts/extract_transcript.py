@@ -166,7 +166,7 @@ def download_audio(video_id: str, output_dir: Path) -> Path:
     if result.returncode != 0:
         stderr = result.stderr.lower()
 
-        if "video unavailable" in stderr or "private video" in stderr:
+        if "video unavailable" in stderr or "private video" in stderr or "not available" in stderr:
             raise VideoUnavailableError(
                 f"Video {video_id} is unavailable (deleted or private). "
                 f"Veredicto: IRRECUPERABLE — buscar copia local."
@@ -246,13 +246,17 @@ def apply_vad(
         log.error("torch/torchaudio not installed. Run: pip install torch torchaudio")
         raise
 
-    # Load Silero VAD model
+    # Force CPU for VAD to avoid CUDA runtime mismatch issues (libcudart)
+    device = torch.device("cpu")
+
+    # Load Silero VAD model (runs on CPU — negligible overhead)
     model, utils = torch.hub.load(
         repo_or_dir="snakers4/silero-vad",
         model="silero_vad",
         force_reload=False,
         onnx=False,
     )
+    model = model.to(device)
 
     (get_speech_timestamps, _, read_audio, _, _) = utils
 
