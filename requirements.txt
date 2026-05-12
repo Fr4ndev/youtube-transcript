@@ -1,0 +1,11 @@
+# Core
+faster-whisper>=1.0.0
+yt-dlp>=2024.0.0
+torch>=2.1.0
+torchaudio>=2.1.0
+
+# Optional: source separation (~2 GB extra, install separately if needed)
+# demucs>=4.0.0
+
+# Optional: better progress bars
+# tqdm>=4.66.0
